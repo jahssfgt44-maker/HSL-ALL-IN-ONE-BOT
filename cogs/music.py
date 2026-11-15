@@ -127,7 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio/best",
+    "format": "ba[ext=m4a]/bestaudio/best",
     "noplaylist": True,
     "nocheckcertificate": True,
     "ignoreerrors": False,
@@ -138,10 +138,11 @@ BASE_YTDLP = {
     "source_address": "0.0.0.0",
     "cookiefile": "cookies.txt",
     "extractor_args": {
-        "youtube": {
-            "player_client": ["web", "android"],
-            "skip": ["dash", "hls"]
-        }
+    "youtube": {
+        "player_client": ["android", "web"],
+        "skip": ["hls", "dash"]
+    }
+
     },
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",

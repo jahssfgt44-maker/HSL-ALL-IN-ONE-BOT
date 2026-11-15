@@ -127,7 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio",
+    "format": "bestaudio/best",
     "noplaylist": True,
     "nocheckcertificate": True,
     "ignoreerrors": False,
@@ -136,14 +136,18 @@ BASE_YTDLP = {
     "no_warnings": True,
     "default_search": "auto",
     "source_address": "0.0.0.0",
-    "cookiefile": "cookies.txt",  # Agar cookies file use kar rahe ho
+    "cookiefile": "cookies.txt",  # Ensure karo cookies.txt root folder mein ho
     "extractor_args": {
         "youtube": {
-            "player_client": ["android"],  # <--- Sirf android client rakho taaki format error na aaye
+            "player_client": ["android", "web", "mweb"],
+            "skip": ["dash", "hls"]
         }
-    
-
     },
+    "postprocessors": [{
+        "key": "FFmpegExtractAudio",
+        "preferredcodec": "opus",
+        "preferredquality": "192",
+}],
     "http_headers": {
         "User-Agent": USER_AGENT,
         "Accept-Language": "en-US,en;q=0.9",

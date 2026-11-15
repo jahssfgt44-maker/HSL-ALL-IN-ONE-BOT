@@ -127,7 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio/best[ext=m4a]/bestaudio",  # M4A ya standard audio format prefer karega
+    "format": "bestaudio[ext=m4a]/bestaudio/best",  # M4A ya standard audio format prefer karega
     "noplaylist": True,
     "nocheckcertificate": True,
     "ignoreerrors": False,

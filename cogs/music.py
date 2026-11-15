@@ -127,6 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
+    "format": "bestaudio/best",  # <--- Yeh line sabse zaroori hai!
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
@@ -136,6 +137,11 @@ BASE_YTDLP = {
     "fragment_retries": 2,
     "nocheckcertificate": True,
     "geo_bypass": True,
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["android", "web"]
+        }
+    },
     "http_headers": {
         "User-Agent": USER_AGENT,
         "Accept-Language": "en-US,en;q=0.9",
@@ -146,7 +152,7 @@ BASE_YTDLP = {
     },
     "remote_components": [
         "ejs:github"
-    ],
+    ]
 }
 
 

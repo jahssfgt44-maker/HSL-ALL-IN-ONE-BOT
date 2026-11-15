@@ -161,20 +161,23 @@ BASE_YTDLP = {
     "no_warnings": True,
     "default_search": "auto",
     "source_address": "0.0.0.0",
-    "cookiefile": "cookies.txt",
+    "cookiefile": COOKIE_FILE,
     "extractor_args": {
         "youtube": {
-            "player_client": ["web", "android"],
+            "player_client": ["android", "web", "mweb"],
             "skip": ["hls", "dash"]
         }
     },
     "http_headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
         "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"'
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Dest": "document"
     },
     "js_runtimes": {
         "deno": {}
@@ -474,7 +477,7 @@ class MusicPlayer:
 
         def extract():
             strategies = [
-                {"player_client": ["web", "android"]},
+                {"player_client": ["android", "web"]},
                 {"player_client": ["ios", "web"]},
                 {"player_client": ["mweb"]}
             ]

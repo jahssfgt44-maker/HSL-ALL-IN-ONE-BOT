@@ -161,14 +161,20 @@ BASE_YTDLP = {
     "no_warnings": True,
     "default_search": "auto",
     "source_address": "0.0.0.0",
+    
+    # Yahan apni cookies file add kar do taaki 403 bypass ho jaye
+    "cookiefile": "cookies.txt",
+
     "extractor_args": {
         "youtube": {
-            "player_client": ["android", "web", "mweb", "ios"],
+            # Sirf reliable clients rakho jo block na karein
+            "player_client": ["android", "ios"],
             "skip": ["hls", "dash"]
         }
     },
     "http_headers": {
-        "User-Agent": USER_AGENT,
+        "User-Agent": USER_AGENT,    
+
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',

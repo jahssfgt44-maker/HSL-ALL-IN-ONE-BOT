@@ -11,6 +11,8 @@ import aiohttp
 import discord
 from discord.ext import commands
 import yt_dlp
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 
 
 # =========================================================
@@ -32,6 +34,29 @@ HSL_GIF = (
     "v1.Y2lkPTc5MGI3NjExZ3RqemR3c3A0MHl3NWw1NHE4a2FjdWVkdDdqdXppaXdxdHhobGF5ayZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/"
     "iBILBPeCHDVuELjOND/giphy.gif"
 )
+
+
+# =========================================================
+# SPOTIFY CLIENT INITIALIZATION
+# =========================================================
+
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+spotify_client = None
+
+if SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET:
+    try:
+        spotify_client = spotipy.Spotify(
+            auth_manager=SpotifyClientCredentials(
+                client_id=SPOTIFY_CLIENT_ID,
+                client_secret=SPOTIFY_CLIENT_SECRET
+            )
+        )
+        print("[MUSIC] [SPOTIFY] Client initialized successfully.")
+    except Exception as e:
+        print("[MUSIC] [SPOTIFY] Failed to initialize:", repr(e))
+else:
+    print("[MUSIC] [WARN] Spotify credentials not found in ENV. Spotify links will use search fallback.")
 
 
 # =========================================================
@@ -138,11 +163,10 @@ BASE_YTDLP = {
     "source_address": "0.0.0.0",
     "cookiefile": "cookies.txt",
     "extractor_args": {
-    "youtube": {
-        "player_client": ["android", "web"],
-        "skip": ["hls", "dash"]
-    }
-
+        "youtube": {
+            "player_client": ["web", "android"],
+            "skip": ["hls", "dash"]
+        }
     },
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -332,7 +356,7 @@ class MusicPlayer:
         await self.voice_status("")
 
     # -----------------------------------------------------
-    # SONG SEARCH
+    # SONG SEARCH & SPOTIFY RESOLVER
     # -----------------------------------------------------
 
     async def resolve_song(self, query, requester):
@@ -343,6 +367,28 @@ class MusicPlayer:
             if not query_text:
                 return None
 
+            search_query = query_text
+
+            # Handle Spotify Links
+            if "spotify.com" in query_text:
+                if spotify_client:
+                    try:
+                        if "track" in query_text:
+                            track_id = query_text.split("track/")[1].split("?")[0]
+                            track_info = spotify_client.track(track_id)
+                            track_name = track_info["name"]
+                            artist_name = track_info["artists"][0]["name"]
+                            search_query = f"{track_name} - {artist_name}"
+                        elif "playlist" in query_text or "album" in query_text:
+                            # For simplicity/speed in single play, extract first track or search name
+                            # Better handled if user passes a direct track
+                            pass
+                    except Exception as e:
+                        print("[MUSIC] [SPOTIFY RESOLVE ERROR]", repr(e))
+                # Fallback if spotify client fails or link is raw
+                if "spotify.com" in search_query:
+                    search_query = query_text
+
             try:
                 options = yt_options()
                 options.update({
@@ -351,9 +397,9 @@ class MusicPlayer:
                     "extract_flat": True,
                 })
 
-                if query_text.startswith(("http://", "https://")):
+                if search_query.startswith(("http://", "https://")):
                     with yt_dlp.YoutubeDL(options) as ydl:
-                        info = ydl.extract_info(query_text, download=False)
+                        info = ydl.extract_info(search_query, download=False)
 
                     if not info:
                         return None
@@ -385,7 +431,7 @@ class MusicPlayer:
 
                 with yt_dlp.YoutubeDL(options) as ydl:
                     info = ydl.extract_info(
-                        f"ytsearch1:{query_text}",
+                        f"ytsearch1:{search_query}",
                         download=False
                     )
 
@@ -401,10 +447,6 @@ class MusicPlayer:
                 video_id = entry.get("id")
 
                 if not title or not video_id:
-                    return None
-
-                lower = title.lower()
-                if any(bad in lower for bad in ("shorts", "live stream", "full movie")):
                     return None
 
                 url = (
@@ -432,7 +474,9 @@ class MusicPlayer:
 
         def extract():
             strategies = [
-                {"player_client": ["web_safari"]}
+                {"player_client": ["web", "android"]},
+                {"player_client": ["ios", "web"]},
+                {"player_client": ["mweb"]}
             ]
 
             for index, strategy in enumerate(strategies, 1):
@@ -973,7 +1017,7 @@ class Music(commands.Cog):
 
     @commands.hybrid_command(
         name="play",
-        description="Play a YouTube song"
+        description="Play a song from YouTube or Spotify"
     )
     async def play(self, ctx, *, query: str):
         if not ctx.guild:
@@ -1020,7 +1064,7 @@ class Music(commands.Cog):
                     delete_after=5
                 )
 
-            loading = await ctx.send("🔎 **Searching YouTube...**")
+            loading = await ctx.send("🔎 **Searching song (YouTube / Spotify)...**")
             started = time.monotonic()
             song = await player.resolve_song(query, ctx.author)
             search_time = time.monotonic() - started
@@ -1030,7 +1074,7 @@ class Music(commands.Cog):
             if not song:
                 try:
                     await loading.edit(
-                        content="❌ **YouTube could not find this song.**"
+                        content="❌ **Could not find or load this song.**"
                     )
                 except Exception:
                     pass

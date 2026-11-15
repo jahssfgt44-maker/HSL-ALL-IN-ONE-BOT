@@ -127,7 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio[ext=m4a]/bestaudio/best",  # M4A ya standard audio format prefer karega
+    "format": "bestaudio[ext=m4a]/bestaudio/best/best[height<=480]",
     "noplaylist": True,
     "nocheckcertificate": True,
     "ignoreerrors": False,
@@ -139,15 +139,14 @@ BASE_YTDLP = {
     "cookiefile": "cookies.txt",
     "extractor_args": {
         "youtube": {
-            "player_client": ["android"],  # Android client HLS ki jagah direct HTTPS streams deta hai
+            "player_client": ["android", "web"]
         }
     },
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "*/*",
+        "Accept": "*/*"
     },
-
     "js_runtimes": {
         "deno": {}
     },

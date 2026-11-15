@@ -127,7 +127,7 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio/best",
+    "format": "bestaudio/best[ext=m4a]/bestaudio",  # M4A ya standard audio format prefer karega
     "noplaylist": True,
     "nocheckcertificate": True,
     "ignoreerrors": False,
@@ -136,23 +136,18 @@ BASE_YTDLP = {
     "no_warnings": True,
     "default_search": "auto",
     "source_address": "0.0.0.0",
-    "cookiefile": "cookies.txt",  # Ensure karo cookies.txt root folder mein ho
+    "cookiefile": "cookies.txt",
     "extractor_args": {
         "youtube": {
-            "player_client": ["android", "web", "mweb"],
-            "skip": ["dash", "hls"]
+            "player_client": ["android"],  # Android client HLS ki jagah direct HTTPS streams deta hai
         }
     },
-    "postprocessors": [{
-        "key": "FFmpegExtractAudio",
-        "preferredcodec": "opus",
-        "preferredquality": "192",
-}],
     "http_headers": {
-        "User-Agent": USER_AGENT,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "*/*",
     },
+
     "js_runtimes": {
         "deno": {}
     },
@@ -587,139 +582,142 @@ class MusicPlayer:
 
             self.starting = True
 
-            try:
-                if self.loop and self.current:
-                    song = self.current
-                elif self.queue:
-                    song = self.queue.popleft()
-                    self.current = song
-                elif self.autoplay and self.current:
-                    song = await self.autoplay_song()
-                    if not song:
-                        self.current = None
-                        await self.clear_voice_status()
-                        return
-                    self.current = song
-                else:
+        try:
+            if self.loop and self.current:
+                song = self.current
+            elif self.queue:
+                song = self.queue.popleft()
+                self.current = song
+            elif self.autoplay and self.current:
+                song = await self.autoplay_song()
+                if not song:
                     self.current = None
                     await self.clear_voice_status()
                     return
+                self.current = song
+            else:
+                self.current = None
+                await self.clear_voice_status()
+                return
 
-                self.play_token += 1
-                token = self.play_token
+            self.play_token += 1
+            token = self.play_token
 
-                print(
-                    "[MUSIC] [PREPARE]",
-                    song.title,
-                    "| token:",
-                    token
+            print(
+                "[MUSIC] [PREPARE]",
+                song.title,
+                "| token:",
+                token
+            )
+
+            if self.voice.is_playing() or self.voice.is_paused():
+                self.voice.stop()
+
+            stream = await self.get_audio_stream(song)
+            if token != self.play_token:
+                return
+
+            if not stream:
+                print("[MUSIC] [ERROR] Audio stream unavailable:", song.title)
+                self.current = song
+                if self.text_channel:
+                    try:
+                        await self.text_channel.send(
+                            f"⚠️ Could not load audio for **{song.title}**. "
+                            "Use `/skip` to try the next song."
+                        )
+                    except Exception:
+                        pass
+                return
+
+            stream_url = stream["url"]
+            headers = dict(stream.get("headers") or {})
+            headers.setdefault("User-Agent", USER_AGENT)
+            headers.setdefault("Referer", "https://www.youtube.com/")
+
+            header_lines = [
+                f"{key}: {value}"
+                for key, value in headers.items()
+                if value
+            ]
+            ffmpeg_headers = "\r\n".join(header_lines) + "\r\n"
+
+            before_options = (
+                "-nostdin "
+                "-reconnect 1 "
+                "-reconnect_streamed 1 "
+                "-reconnect_delay_max 5 "
+                "-rw_timeout 20000000 "
+                "-headers "
+                f"\"{ffmpeg_headers}\""
+            )
+            ffmpeg_options = {
+                'before_options': before_options,
+                'options': '-vn'
+            }
+
+            try:
+                source = discord.FFmpegPCMAudio(
+                    stream_url,
+                    executable=FFMPEG_PATH,
+                    before_options=ffmpeg_options['before_options'],
+                    options=ffmpeg_options['options']
                 )
+                source = discord.PCMVolumeTransformer(
+                    source,
+                    volume=self.volume
+                )
+            except Exception as e:
+                print("[MUSIC] [FFMPEG ERROR]", repr(e))
+                return
 
-                if self.voice.is_playing() or self.voice.is_paused():
-                    self.voice.stop()
+            def after_play(error):
+                if error:
+                    print("[MUSIC] [FFMPEG]", repr(error))
+                try:
+                    future = asyncio.run_coroutine_threadsafe(
+                        self.finished(token),
+                        self.bot.loop
+                    )
 
-                stream = await self.get_audio_stream(song)
-                if token != self.play_token:
-                    return
-
-                if not stream:
-                    print("[MUSIC] [ERROR] Audio stream unavailable:", song.title)
-                    self.current = song
-                    if self.text_channel:
+                    def callback(f):
                         try:
-                            await self.text_channel.send(
-                                f"⚠️ Could not load audio for **{song.title}**. "
-                                "Use `/skip` to try the next song."
-                            )
+                            f.exception()
                         except Exception:
                             pass
-                    return
 
-                stream_url = stream["url"]
-                headers = dict(stream.get("headers") or {})
-                headers.setdefault("User-Agent", USER_AGENT)
-                headers.setdefault("Referer", "https://www.youtube.com/")
-
-                header_lines = [
-                    f"{key}: {value}"
-                    for key, value in headers.items()
-                    if value
-                ]
-                ffmpeg_headers = "\r\n".join(header_lines) + "\r\n"
-
-                before_options = (
-                    "-nostdin "
-                    "-reconnect 1 "
-                    "-reconnect_streamed 1 "
-                    "-reconnect_delay_max 5 "
-                    "-rw_timeout 20000000 "
-                    "-headers "
-                    f"\"{ffmpeg_headers}\""
-                )
-                ffmpeg_options = "-vn"
-
-                try:
-                    source = discord.FFmpegPCMAudio(
-                        stream_url,
-                        executable=FFMPEG_PATH,
-                        before_options=before_options,
-                        options=ffmpeg_options
-                    )
-                    source = discord.PCMVolumeTransformer(
-                        source,
-                        volume=self.volume
-                    )
+                    future.add_done_callback(callback)
                 except Exception as e:
-                    print("[MUSIC] [FFMPEG ERROR]", repr(e))
-                    return
+                    print("[MUSIC] [CALLBACK]", repr(e))
 
-                def after_play(error):
-                    if error:
-                        print("[MUSIC] [FFMPEG]", repr(error))
-                    try:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.finished(token),
-                            self.bot.loop
-                        )
-
-                        def callback(f):
-                            try:
-                                f.exception()
-                            except Exception:
-                                pass
-
-                        future.add_done_callback(callback)
-                    except Exception as e:
-                        print("[MUSIC] [CALLBACK]", repr(e))
-
-                if token != self.play_token:
-                    try:
-                        source.cleanup()
-                    except Exception:
-                        pass
-                    return
-
-                self.song_start_time = time.monotonic()
-                self.total_paused = 0
-
+            if token != self.play_token:
                 try:
-                    self.voice.play(source, after=after_play)
-                except Exception as e:
-                    print("[MUSIC] [VOICE PLAY ERROR]", repr(e))
-                    try:
-                        source.cleanup()
-                    except Exception:
-                        pass
-                    return
+                    source.cleanup()
+                except Exception:
+                    pass
+                return
 
-                print("[MUSIC] [PLAYING]", song.title)
-                await self.voice_status(f"🎵 {song.title}")
-                await self.send_now_playing()
+            self.song_start_time = time.monotonic()
+            self.total_paused = 0
 
+            try:
+                self.voice.play(source, after=after_play)
             except Exception as e:
-                print("[MUSIC] [PLAYBACK ERROR]", repr(e))
-            finally:
-                self.starting = False
+                print("[MUSIC] [VOICE PLAY ERROR]", repr(e))
+                try:
+                    source.cleanup()
+                except Exception:
+                    pass
+                return
+
+            print("[MUSIC] [PLAYING]", song.title)
+            await self.voice_status(f"🎵 {song.title}")
+            await self.send_now_playing()
+
+        except Exception as e:
+            print("[MUSIC] [PLAYBACK ERROR]", repr(e))
+        finally:
+            self.starting = False
 
     # -----------------------------------------------------
     # FINISHED

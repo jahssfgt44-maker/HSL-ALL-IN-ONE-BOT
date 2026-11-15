@@ -127,20 +127,22 @@ FFMPEG_PATH = find_ffmpeg()
 # =========================================================
 
 BASE_YTDLP = {
-    "format": "bestaudio/best",  # <--- Yeh line sabse zaroori hai!
+    "format": "bestaudio",
+    "noplaylist": True,
+    "nocheckcertificate": True,
+    "ignoreerrors": False,
+    "logtostderr": False,
     "quiet": True,
     "no_warnings": True,
-    "noplaylist": True,
-    "force_ipv4": True,
-    "socket_timeout": 15,
-    "retries": 2,
-    "fragment_retries": 2,
-    "nocheckcertificate": True,
-    "geo_bypass": True,
+    "default_search": "auto",
+    "source_address": "0.0.0.0",
+    "cookiefile": "cookies.txt",  # Agar cookies file use kar rahe ho
     "extractor_args": {
         "youtube": {
-            "player_client": ["android", "web"]
+            "player_client": ["android"],  # <--- Sirf android client rakho taaki format error na aaye
         }
+    
+
     },
     "http_headers": {
         "User-Agent": USER_AGENT,

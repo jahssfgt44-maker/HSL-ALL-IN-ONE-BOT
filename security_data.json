@@ -1,0 +1,37 @@
+{
+    "1519933809402056805": {
+        "antinuke": false,
+        "antibot": false,
+        "antilink": false,
+        "antimod": false,
+        "antispam": false,
+        "duplicate": false,
+        "whitelist_music": [
+            1236558155379507271
+        ]
+    },
+    "1531880443383906426": {
+        "antinuke": true,
+        "antibot": true,
+        "antilink": true,
+        "antimod": true,
+        "antispam": true,
+        "duplicate": true,
+        "antigali": true,
+        "whitelist_gali": [],
+        "whitelist_music": [],
+        "whitelist_bots": []
+    },
+    "1526119020758175794": {
+        "antinuke": true,
+        "antibot": true,
+        "antilink": true,
+        "antimod": true,
+        "antispam": true,
+        "duplicate": true,
+        "antigali": true,
+        "whitelist_gali": [],
+        "whitelist_music": [],
+        "whitelist_bots": []
+    }
+}
